@@ -30,7 +30,7 @@ bool g_draggingText = false;
 int g_dragStartY = 0;
 
 HFONT g_hFont = nullptr;
-const int g_lineHeight = 24; // í≤êÆâ¬î\
+const int g_lineHeight = 24;
 UINT_PTR g_timerId = 0;
 bool g_scrollingUp = false;
 bool g_scrollingDown = false;
@@ -96,44 +96,59 @@ void UpdateLayout(HWND hWnd) {
     g_sliderRect.top = sliderTop;
     g_sliderRect.right = g_scrollBarArea.right;
     g_sliderRect.bottom = sliderTop + sliderHeight;
+
+    if (g_btnAgree && g_btnDisagree) {
+        MoveWindow(g_btnAgree, areaLeft, g_textArea.bottom + 20, 100, 30, TRUE);
+        MoveWindow(g_btnDisagree, areaLeft + 120, g_textArea.bottom + 20, 100, 30, TRUE);
+    }
 }
 
 void DrawContent(HDC hdc) {
-    FillRect(hdc, &g_textArea, (HBRUSH)(COLOR_WINDOW + 1));
+    RECT client;
+    GetClientRect(g_hWnd, &client);
+    int width = client.right - client.left;
+    int height = client.bottom - client.top;
 
-    // çïògÇï`âÊ
-    HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); // çïÇÃÉyÉì
-    HGDIOBJ hOldPen = SelectObject(hdc, hPen);
-    HGDIOBJ hOldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH)); // ìhÇËÇ¬Ç‘Ç≥Ç»Ç¢
+    HDC memDC = CreateCompatibleDC(hdc);
+    HBITMAP memBM = CreateCompatibleBitmap(hdc, width, height);
+    HBITMAP oldBM = (HBITMAP)SelectObject(memDC, memBM);
 
-    Rectangle(hdc, g_textArea.left, g_textArea.top, g_scrollBarArea.left, g_textArea.bottom);
+    FillRect(memDC, &client, (HBRUSH)(COLOR_WINDOW + 1));
 
-    SelectObject(hdc, hOldBrush);
-    SelectObject(hdc, hOldPen);
+    HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+    HGDIOBJ oldPen = SelectObject(memDC, hPen);
+    HGDIOBJ oldBrush = SelectObject(memDC, GetStockObject(NULL_BRUSH));
+    Rectangle(memDC, g_textArea.left, g_textArea.top, g_scrollBarArea.left, g_textArea.bottom);
+    SelectObject(memDC, oldBrush);
+    SelectObject(memDC, oldPen);
     DeleteObject(hPen);
-	
-	SetBkMode(hdc, TRANSPARENT);
-	HFONT hOldFont = (HFONT)SelectObject(hdc, g_hFont);
-	int startY = g_textArea.top + 10;
+
+    SetBkMode(memDC, TRANSPARENT);
+    HFONT oldFont = (HFONT)SelectObject(memDC, g_hFont);
+    int startY = g_textArea.top + 10;
 
     for (int i = 0; i < VISIBLE_LINE_COUNT; ++i) {
         int index = g_scrollPos + i;
         if (index >= (int)g_lines.size()) break;
-        TextOut(hdc, g_textArea.left + 10, startY + i * g_lineHeight, g_lines[index].c_str(), g_lines[index].length());
+        TextOut(memDC, g_textArea.left + 10, startY + i * g_lineHeight, g_lines[index].c_str(), g_lines[index].length());
     }
 
-    FillRect(hdc, &g_upButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
-    DrawText(hdc, L"Å£", -1, &g_upButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    FillRect(memDC, &g_upButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
+    DrawText(memDC, L"Å£", -1, &g_upButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-    FillRect(hdc, &g_downButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
-    DrawText(hdc, L"Å•", -1, &g_downButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    FillRect(memDC, &g_downButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
+    DrawText(memDC, L"Å•", -1, &g_downButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
     RECT trackRect = { g_scrollBarArea.left, g_upButtonRect.bottom, g_scrollBarArea.right, g_downButtonRect.top };
-    FillRect(hdc, &trackRect, (HBRUSH)(COLOR_SCROLLBAR + 1));
+    FillRect(memDC, &trackRect, (HBRUSH)(COLOR_SCROLLBAR + 1));
+    FillRect(memDC, &g_sliderRect, (HBRUSH)GetStockObject(GRAY_BRUSH));
 
-    FillRect(hdc, &g_sliderRect, (HBRUSH)GetStockObject(GRAY_BRUSH));
+    SelectObject(memDC, oldFont);
+    BitBlt(hdc, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
 
-    SelectObject(hdc, hOldFont);
+    SelectObject(memDC, oldBM);
+    DeleteObject(memBM);
+    DeleteDC(memDC);
 }
 
 void ScrollText(int delta) {
@@ -143,15 +158,13 @@ void ScrollText(int delta) {
         g_scrollPos = newPos;
         UpdateLayout(g_hWnd);
 
-        // Åö Ç±Ç±ÇèCê≥
         RECT redrawArea = {
             g_textArea.left,
             g_textArea.top,
             g_scrollBarArea.right,
             g_textArea.bottom
         };
-        InvalidateRect(g_hWnd, &redrawArea, TRUE);
-
+        InvalidateRect(g_hWnd, &redrawArea, FALSE);
         UpdateButtonState();
     }
 }
@@ -169,9 +182,9 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow) {
     g_hInst = hInstance;
 
     g_hWnd = CreateWindow(L"MyWindowClass", L"Win32 Scroll Demo",
-                          WS_OVERLAPPEDWINDOW,
-                          CW_USEDEFAULT, CW_USEDEFAULT, 600, 400,
-                          NULL, NULL, hInstance, NULL);
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, 600, 400,
+        NULL, NULL, hInstance, NULL);
 
     LOGFONT lf = {};
     lf.lfHeight = -g_lineHeight;
@@ -263,15 +276,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
             int sliderPos = newTop - trackTop;
             g_scrollPos = sliderPos * (MAX_LINE_COUNT - VISIBLE_LINE_COUNT) / (trackHeight - sliderHeight);
-			
-			// Å´ èCê≥å„
-			RECT redrawArea = {
-				g_textArea.left,
-				g_textArea.top,
-				g_scrollBarArea.right,
-				g_textArea.bottom
-			};
-			InvalidateRect(hWnd, &redrawArea, TRUE);
+
+            RECT redrawArea = {
+                g_textArea.left,
+                g_textArea.top,
+                g_scrollBarArea.right,
+                g_textArea.bottom
+            };
+            InvalidateRect(hWnd, &redrawArea, FALSE);
             UpdateButtonState();
         } else if (g_draggingText) {
             int dy = pt.y - g_dragStartY;
@@ -282,6 +294,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         }
     }
     break;
+    case WM_COMMAND:
+        switch (LOWORD(wParam)) {
+        case 1:
+            MessageBox(hWnd, L"Ç†ÇËÇ™Ç∆Ç§Ç≤Ç¥Ç¢Ç‹Ç∑ÅB", L"ìØà”", MB_OK);
+            break;
+        case 2:
+            MessageBox(hWnd, L"ìØà”Ç≥ÇÍÇ‹ÇπÇÒÇ≈ÇµÇΩÅB", L"îÒìØà”", MB_OK);
+            break;
+        }
+        break;
     case WM_TIMER:
         if (g_scrollingUp) ScrollText(-SCROLL_STEP);
         else if (g_scrollingDown) ScrollText(SCROLL_STEP);
@@ -295,4 +317,3 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     return 0;
 }
-
