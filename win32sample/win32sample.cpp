@@ -142,7 +142,16 @@ void ScrollText(int delta) {
     if (newPos != g_scrollPos) {
         g_scrollPos = newPos;
         UpdateLayout(g_hWnd);
-        InvalidateRect(g_hWnd, NULL, TRUE);
+
+        // Åö Ç±Ç±ÇèCê≥
+        RECT redrawArea = {
+            g_textArea.left,
+            g_textArea.top,
+            g_scrollBarArea.right,
+            g_textArea.bottom
+        };
+        InvalidateRect(g_hWnd, &redrawArea, TRUE);
+
         UpdateButtonState();
     }
 }
@@ -254,8 +263,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
             int sliderPos = newTop - trackTop;
             g_scrollPos = sliderPos * (MAX_LINE_COUNT - VISIBLE_LINE_COUNT) / (trackHeight - sliderHeight);
-
-            InvalidateRect(hWnd, NULL, TRUE);
+			
+			// Å´ èCê≥å„
+			RECT redrawArea = {
+				g_textArea.left,
+				g_textArea.top,
+				g_scrollBarArea.right,
+				g_textArea.bottom
+			};
+			InvalidateRect(hWnd, &redrawArea, TRUE);
             UpdateButtonState();
         } else if (g_draggingText) {
             int dy = pt.y - g_dragStartY;
