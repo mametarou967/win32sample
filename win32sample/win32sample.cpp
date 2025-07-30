@@ -12,6 +12,9 @@
 
 HINSTANCE g_hInst;
 HWND g_hWnd;
+HWND g_btnAgree = NULL;
+HWND g_btnDisagree = NULL;
+
 std::vector<std::wstring> g_lines;
 int g_scrollPos = 0;
 
@@ -39,6 +42,15 @@ void InitLines() {
         std::wstringstream ss;
         ss << L"ƒTƒ“ƒvƒ‹•¶Í " << i;
         g_lines.push_back(ss.str());
+    }
+}
+
+void UpdateButtonState() {
+    int maxScroll = MAX_LINE_COUNT - VISIBLE_LINE_COUNT;
+    if (g_scrollPos >= maxScroll) {
+        EnableWindow(g_btnAgree, TRUE);
+    } else {
+        EnableWindow(g_btnAgree, FALSE);
     }
 }
 
@@ -131,6 +143,7 @@ void ScrollText(int delta) {
         g_scrollPos = newPos;
         UpdateLayout(g_hWnd);
         InvalidateRect(g_hWnd, NULL, TRUE);
+        UpdateButtonState();
     }
 }
 
@@ -173,6 +186,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE:
         InitLines();
+        g_btnAgree = CreateWindow(L"BUTTON", L"“¯ˆÓ‚·‚é", WS_CHILD | WS_VISIBLE | WS_DISABLED,
+            160, 280, 100, 30, hWnd, (HMENU)1, g_hInst, NULL);
+        g_btnDisagree = CreateWindow(L"BUTTON", L"“¯ˆÓ‚µ‚È‚¢", WS_CHILD | WS_VISIBLE,
+            280, 280, 100, 30, hWnd, (HMENU)2, g_hInst, NULL);
         UpdateLayout(hWnd);
         break;
     case WM_SIZE:
@@ -239,6 +256,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             g_scrollPos = sliderPos * (MAX_LINE_COUNT - VISIBLE_LINE_COUNT) / (trackHeight - sliderHeight);
 
             InvalidateRect(hWnd, NULL, TRUE);
+            UpdateButtonState();
         } else if (g_draggingText) {
             int dy = pt.y - g_dragStartY;
             if (abs(dy) >= g_lineHeight) {
@@ -261,3 +279,4 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     return 0;
 }
+
