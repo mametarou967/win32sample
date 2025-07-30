@@ -37,7 +37,7 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void InitLines() {
     for (int i = 1; i <= MAX_LINE_COUNT; ++i) {
         std::wstringstream ss;
-        ss << L"これはサンプルの文章 " << i;
+        ss << L"サンプル文章 " << i;
         g_lines.push_back(ss.str());
     }
 }
