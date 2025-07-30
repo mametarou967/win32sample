@@ -4,12 +4,11 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <algorithm>
 
 #define MAX_LINE_COUNT 30
 #define VISIBLE_LINE_COUNT 6
 #define SCROLL_STEP 1
-#define TIMER_SCROLL_UP 1
-#define TIMER_SCROLL_DOWN 2
 
 HINSTANCE g_hInst;
 HWND g_hWnd;
@@ -27,8 +26,11 @@ int g_dragOffsetY = 0;
 bool g_draggingText = false;
 int g_dragStartY = 0;
 
-HFONT g_hFont;
-const int g_lineHeight = 24;
+HFONT g_hFont = nullptr;
+const int g_lineHeight = 24; // 調整可能
+UINT_PTR g_timerId = 0;
+bool g_scrollingUp = false;
+bool g_scrollingDown = false;
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -47,7 +49,7 @@ void UpdateLayout(HWND hWnd) {
     int width = client.right - client.left;
     int height = client.bottom - client.top;
 
-    int areaHeight = VISIBLE_LINE_COUNT * g_lineHeight;
+    int areaHeight = VISIBLE_LINE_COUNT * g_lineHeight + 20;
     int areaWidth = width / 2;
     int areaLeft = (width - areaWidth) / 2;
     int areaTop = (height - areaHeight) / 2;
@@ -74,6 +76,7 @@ void UpdateLayout(HWND hWnd) {
 
     int trackHeight = g_scrollBarArea.bottom - g_scrollBarArea.top - 60;
     int sliderHeight = (trackHeight * VISIBLE_LINE_COUNT) / MAX_LINE_COUNT;
+    sliderHeight = max(sliderHeight, 20);
     int maxScroll = MAX_LINE_COUNT - VISIBLE_LINE_COUNT;
     int sliderTop = g_upButtonRect.bottom + ((trackHeight - sliderHeight) * g_scrollPos / maxScroll);
 
@@ -89,7 +92,7 @@ void DrawContent(HDC hdc) {
 
     HFONT hOldFont = (HFONT)SelectObject(hdc, g_hFont);
 
-    int startY = g_textArea.top;
+    int startY = g_textArea.top + 10;
     for (int i = 0; i < VISIBLE_LINE_COUNT; ++i) {
         int index = g_scrollPos + i;
         if (index >= (int)g_lines.size()) break;
@@ -137,13 +140,13 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow) {
                           CW_USEDEFAULT, CW_USEDEFAULT, 600, 400,
                           NULL, NULL, hInstance, NULL);
 
-    ShowWindow(g_hWnd, nCmdShow);
-    UpdateWindow(g_hWnd);
-
     LOGFONT lf = {};
     lf.lfHeight = -g_lineHeight;
     wcscpy_s(lf.lfFaceName, L"BIZ UDゴシック");
     g_hFont = CreateFontIndirect(&lf);
+
+    ShowWindow(g_hWnd, nCmdShow);
+    UpdateWindow(g_hWnd);
 
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
@@ -175,23 +178,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     break;
     case WM_LBUTTONDOWN:
     {
-        int x = LOWORD(lParam);
-        int y = HIWORD(lParam);
-        POINT pt = { x, y };
-
+        POINT pt = { LOWORD(lParam), HIWORD(lParam) };
         if (PtInRect(&g_upButtonRect, pt)) {
+            g_scrollingUp = true;
             ScrollText(-SCROLL_STEP);
-            SetTimer(hWnd, TIMER_SCROLL_UP, 100, NULL);
+            g_timerId = SetTimer(hWnd, 1, 100, NULL);
         } else if (PtInRect(&g_downButtonRect, pt)) {
+            g_scrollingDown = true;
             ScrollText(SCROLL_STEP);
-            SetTimer(hWnd, TIMER_SCROLL_DOWN, 100, NULL);
+            g_timerId = SetTimer(hWnd, 1, 100, NULL);
         } else if (PtInRect(&g_sliderRect, pt)) {
             g_draggingSlider = true;
-            g_dragOffsetY = y - g_sliderRect.top;
+            g_dragOffsetY = pt.y - g_sliderRect.top;
             SetCapture(hWnd);
         } else if (PtInRect(&g_textArea, pt)) {
             g_draggingText = true;
-            g_dragStartY = y;
+            g_dragStartY = pt.y;
             SetCapture(hWnd);
         }
     }
@@ -199,26 +201,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_LBUTTONUP:
         g_draggingSlider = false;
         g_draggingText = false;
-        KillTimer(hWnd, TIMER_SCROLL_UP);
-        KillTimer(hWnd, TIMER_SCROLL_DOWN);
+        g_scrollingUp = false;
+        g_scrollingDown = false;
+        if (g_timerId) {
+            KillTimer(hWnd, g_timerId);
+            g_timerId = 0;
+        }
         ReleaseCapture();
         break;
-    case WM_TIMER:
-        if (wParam == TIMER_SCROLL_UP) {
-            ScrollText(-SCROLL_STEP);
-        } else if (wParam == TIMER_SCROLL_DOWN) {
-            ScrollText(SCROLL_STEP);
-        }
-        break;
     case WM_MOUSEMOVE:
+    {
+        POINT pt = { LOWORD(lParam), HIWORD(lParam) };
         if (g_draggingSlider) {
-            int y = HIWORD(lParam);
             int trackTop = g_upButtonRect.bottom;
             int trackBottom = g_downButtonRect.top;
             int trackHeight = trackBottom - trackTop;
             int sliderHeight = g_sliderRect.bottom - g_sliderRect.top;
 
-            int newTop = y - g_dragOffsetY;
+            int newTop = pt.y - g_dragOffsetY;
             newTop = max(trackTop, min(newTop, trackBottom - sliderHeight));
 
             g_sliderRect.top = newTop;
@@ -229,15 +229,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
             InvalidateRect(hWnd, NULL, TRUE);
         } else if (g_draggingText) {
-            int y = HIWORD(lParam);
-            int dy = y - g_dragStartY;
+            int dy = pt.y - g_dragStartY;
             if (abs(dy) >= g_lineHeight) {
                 ScrollText(-dy / g_lineHeight);
-                g_dragStartY = y;
+                g_dragStartY = pt.y;
             }
         }
+    }
+    break;
+    case WM_TIMER:
+        if (g_scrollingUp) ScrollText(-SCROLL_STEP);
+        else if (g_scrollingDown) ScrollText(SCROLL_STEP);
         break;
     case WM_DESTROY:
+        if (g_timerId) KillTimer(hWnd, g_timerId);
         PostQuitMessage(0);
         break;
     default:
