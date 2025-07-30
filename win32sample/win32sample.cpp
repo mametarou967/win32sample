@@ -9,6 +9,7 @@
 #define MAX_LINE_COUNT 30
 #define VISIBLE_LINE_COUNT 6
 #define SCROLL_STEP 1
+#define LINE_HEIGHT 20
 
 HINSTANCE g_hInst;
 HWND g_hWnd;
@@ -39,42 +40,42 @@ void UpdateLayout(HWND hWnd) {
     GetClientRect(hWnd, &client);
 
     int width = client.right - client.left;
-    int height = client.bottom - client.top;
 
     int areaWidth = width / 2;
-    int areaHeight = height / 2;
+    int areaHeight = VISIBLE_LINE_COUNT * LINE_HEIGHT + 20;  // è„â∫É}Å[ÉWÉìçûÇ›
 
     int areaLeft = (width - areaWidth) / 2;
-    int areaTop = (height - areaHeight) / 2;
+    int areaTop = 50;
 
-    g_textArea.left   = areaLeft;
-    g_textArea.top    = areaTop;
-    g_textArea.right  = areaLeft + areaWidth - 60;
+    g_textArea.left = areaLeft;
+    g_textArea.top = areaTop;
+    g_textArea.right = areaLeft + areaWidth - 60;
     g_textArea.bottom = areaTop + areaHeight;
 
-    g_scrollBarArea.left   = g_textArea.right + 10;
-    g_scrollBarArea.top    = g_textArea.top;
-    g_scrollBarArea.right  = g_textArea.right + 40;
+    g_scrollBarArea.left = g_textArea.right + 10;
+    g_scrollBarArea.top = g_textArea.top;
+    g_scrollBarArea.right = g_textArea.right + 40;
     g_scrollBarArea.bottom = g_textArea.bottom;
 
-    g_upButtonRect.left   = g_scrollBarArea.left;
-    g_upButtonRect.top    = g_scrollBarArea.top;
-    g_upButtonRect.right  = g_scrollBarArea.right;
+    g_upButtonRect.left = g_scrollBarArea.left;
+    g_upButtonRect.top = g_scrollBarArea.top;
+    g_upButtonRect.right = g_scrollBarArea.right;
     g_upButtonRect.bottom = g_scrollBarArea.top + 30;
 
-    g_downButtonRect.left   = g_scrollBarArea.left;
-    g_downButtonRect.top    = g_scrollBarArea.bottom - 30;
-    g_downButtonRect.right  = g_scrollBarArea.right;
+    g_downButtonRect.left = g_scrollBarArea.left;
+    g_downButtonRect.top = g_scrollBarArea.bottom - 30;
+    g_downButtonRect.right = g_scrollBarArea.right;
     g_downButtonRect.bottom = g_scrollBarArea.bottom;
 
     int trackHeight = g_scrollBarArea.bottom - g_scrollBarArea.top - 60;
     int sliderHeight = (trackHeight * VISIBLE_LINE_COUNT) / MAX_LINE_COUNT;
     if (sliderHeight < 10) sliderHeight = 10;
+
     int sliderTop = g_scrollBarArea.top + 30 + (trackHeight * g_scrollPos / (MAX_LINE_COUNT - VISIBLE_LINE_COUNT));
 
-    g_sliderRect.left   = g_scrollBarArea.left;
-    g_sliderRect.top    = sliderTop;
-    g_sliderRect.right  = g_scrollBarArea.right;
+    g_sliderRect.left = g_scrollBarArea.left;
+    g_sliderRect.top = sliderTop;
+    g_sliderRect.right = g_scrollBarArea.right;
     g_sliderRect.bottom = sliderTop + sliderHeight;
 }
 
@@ -82,13 +83,12 @@ void DrawContent(HDC hdc) {
     FillRect(hdc, &g_textArea, (HBRUSH)(COLOR_WINDOW + 1));
     SetBkMode(hdc, TRANSPARENT);
 
-    int lineHeight = 20;
     int startY = g_textArea.top + 10;
 
     for (int i = 0; i < VISIBLE_LINE_COUNT; ++i) {
         int index = g_scrollPos + i;
         if (index >= (int)g_lines.size()) break;
-        TextOut(hdc, g_textArea.left + 10, startY + i * lineHeight, g_lines[index].c_str(), g_lines[index].length());
+        TextOut(hdc, g_textArea.left + 10, startY + i * LINE_HEIGHT, g_lines[index].c_str(), g_lines[index].length());
     }
 
     FillRect(hdc, &g_upButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
@@ -126,9 +126,9 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow) {
     g_hInst = hInstance;
 
     g_hWnd = CreateWindow(L"MyWindowClass", L"Win32 Scroll Demo",
-                          WS_OVERLAPPEDWINDOW,
-                          CW_USEDEFAULT, CW_USEDEFAULT, 500, 400,
-                          NULL, NULL, hInstance, NULL);
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, 500, 400,
+        NULL, NULL, hInstance, NULL);
 
     ShowWindow(g_hWnd, nCmdShow);
     UpdateWindow(g_hWnd);
@@ -169,9 +169,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
         if (PtInRect(&g_upButtonRect, pt)) {
             ScrollText(-SCROLL_STEP);
-        } else if (PtInRect(&g_downButtonRect, pt)) {
+        }
+        else if (PtInRect(&g_downButtonRect, pt)) {
             ScrollText(SCROLL_STEP);
-        } else if (PtInRect(&g_sliderRect, pt)) {
+        }
+        else if (PtInRect(&g_sliderRect, pt)) {
             g_draggingSlider = true;
             g_dragOffsetY = pt.y - g_sliderRect.top;
             SetCapture(hWnd);
