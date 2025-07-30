@@ -1,21 +1,18 @@
 #include "stdafx.h"
 #include "win32sample.h"
 #include <windows.h>
-#include <vector>
-#include <string>
-#include <sstream>
-#include <algorithm>
 
 #define MAX_LINE_COUNT 30
 #define VISIBLE_LINE_COUNT 6
 #define SCROLL_STEP 1
+#define MAX_LINE_LENGTH 128
 
 HINSTANCE g_hInst;
 HWND g_hWnd;
 HWND g_btnAgree = NULL;
 HWND g_btnDisagree = NULL;
 
-std::vector<std::wstring> g_lines;
+TCHAR g_lines[MAX_LINE_COUNT][MAX_LINE_LENGTH];
 int g_scrollPos = 0;
 
 RECT g_textArea;
@@ -29,7 +26,7 @@ int g_dragOffsetY = 0;
 bool g_draggingText = false;
 int g_dragStartY = 0;
 
-HFONT g_hFont = nullptr;
+HFONT g_hFont = NULL;
 const int g_lineHeight = 24;
 UINT_PTR g_timerId = 0;
 bool g_scrollingUp = false;
@@ -38,10 +35,8 @@ bool g_scrollingDown = false;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 void InitLines() {
-    for (int i = 1; i <= MAX_LINE_COUNT; ++i) {
-        std::wstringstream ss;
-        ss << L"ÉTÉìÉvÉãï∂èÕ " << i;
-        g_lines.push_back(ss.str());
+    for (int i = 0; i < MAX_LINE_COUNT; ++i) {
+        wsprintf(g_lines[i], TEXT("\u30b5\u30f3\u30d7\u30eb\u6587\u7ae0 %d"), i + 1);
     }
 }
 
@@ -88,7 +83,7 @@ void UpdateLayout(HWND hWnd) {
 
     int trackHeight = g_scrollBarArea.bottom - g_scrollBarArea.top - 60;
     int sliderHeight = (trackHeight * VISIBLE_LINE_COUNT) / MAX_LINE_COUNT;
-    sliderHeight = max(sliderHeight, 20);
+    if (sliderHeight < 20) sliderHeight = 20;
     int maxScroll = MAX_LINE_COUNT - VISIBLE_LINE_COUNT;
     int sliderTop = g_upButtonRect.bottom + ((trackHeight - sliderHeight) * g_scrollPos / maxScroll);
 
@@ -129,18 +124,23 @@ void DrawContent(HDC hdc) {
 
     for (int i = 0; i < VISIBLE_LINE_COUNT; ++i) {
         int index = g_scrollPos + i;
-        if (index >= (int)g_lines.size()) break;
-        TextOut(memDC, g_textArea.left + 10, startY + i * g_lineHeight, g_lines[index].c_str(), g_lines[index].length());
+        if (index >= MAX_LINE_COUNT) break;
+        TextOut(memDC, g_textArea.left + 10, startY + i * g_lineHeight, g_lines[index], lstrlen(g_lines[index]));
     }
 
     FillRect(memDC, &g_upButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
-    DrawText(memDC, L"Å£", -1, &g_upButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    DrawText(memDC, TEXT("\u25b2"), -1, &g_upButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
     FillRect(memDC, &g_downButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
-    DrawText(memDC, L"Å•", -1, &g_downButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    DrawText(memDC, TEXT("\u25bc"), -1, &g_downButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-    RECT trackRect = { g_scrollBarArea.left, g_upButtonRect.bottom, g_scrollBarArea.right, g_downButtonRect.top };
+    RECT trackRect;
+    trackRect.left = g_scrollBarArea.left;
+    trackRect.top = g_upButtonRect.bottom;
+    trackRect.right = g_scrollBarArea.right;
+    trackRect.bottom = g_downButtonRect.top;
     FillRect(memDC, &trackRect, (HBRUSH)(COLOR_SCROLLBAR + 1));
+
     FillRect(memDC, &g_sliderRect, (HBRUSH)GetStockObject(GRAY_BRUSH));
 
     SelectObject(memDC, oldFont);
