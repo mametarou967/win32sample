@@ -1,41 +1,46 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
+# ビルド成果物
 *.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Linker files
-*.ilk
-
-# Debugger Files
+*.exe
 *.pdb
+*.ilk
+*.idb
+*.aps
+*.ncb
+*.suo
+*.user
+*.sdf
+*.opensdf
+*.ipch
+*.log
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
+# ビルドディレクトリ
+[Bb]in/
+[Dd]ebug*/
+[Rr]elease*/
+
+# 自動生成ファイル
+*.cache
+*.dbmdl
+
+# 一時ファイル
+*.tmp
+*.temp
+*.bak
+*~ 
+
+# Visual Studio の設定ファイル（共有したくないもの）
+.vs/
+.vscode/
+
+# プリコンパイル済みヘッダーなど
+*.pch
+*.res
+
+# プロジェクトによって不要なファイル
+*.exe
 *.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
 *.lib
 
-# Executables
-*.exe
-*.out
-*.app
-
-# debug information files
-*.dwo
+# その他
+Thumbs.db
+desktop.ini
