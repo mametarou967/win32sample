@@ -88,11 +88,22 @@ void UpdateLayout(HWND hWnd) {
 
 void DrawContent(HDC hdc) {
     FillRect(hdc, &g_textArea, (HBRUSH)(COLOR_WINDOW + 1));
-    SetBkMode(hdc, TRANSPARENT);
 
-    HFONT hOldFont = (HFONT)SelectObject(hdc, g_hFont);
+    // çïògÇï`âÊ
+    HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); // çïÇÃÉyÉì
+    HGDIOBJ hOldPen = SelectObject(hdc, hPen);
+    HGDIOBJ hOldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH)); // ìhÇËÇ¬Ç‘Ç≥Ç»Ç¢
 
-    int startY = g_textArea.top + 10;
+    Rectangle(hdc, g_textArea.left, g_textArea.top, g_scrollBarArea.left, g_textArea.bottom);
+
+    SelectObject(hdc, hOldBrush);
+    SelectObject(hdc, hOldPen);
+    DeleteObject(hPen);
+	
+	SetBkMode(hdc, TRANSPARENT);
+	HFONT hOldFont = (HFONT)SelectObject(hdc, g_hFont);
+	int startY = g_textArea.top + 10;
+
     for (int i = 0; i < VISIBLE_LINE_COUNT; ++i) {
         int index = g_scrollPos + i;
         if (index >= (int)g_lines.size()) break;
