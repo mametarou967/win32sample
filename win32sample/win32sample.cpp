@@ -21,16 +21,16 @@ RECT g_upButtonRect;
 RECT g_downButtonRect;
 RECT g_sliderRect;
 
-bool g_draggingSlider = false;
+BOOL g_draggingSlider = FALSE;
 int g_dragOffsetY = 0;
-bool g_draggingText = false;
+BOOL g_draggingText = FALSE;
 int g_dragStartY = 0;
 
 HFONT g_hFont = NULL;
 const int g_lineHeight = 24;
 UINT_PTR g_timerId = 0;
-bool g_scrollingUp = false;
-bool g_scrollingDown = false;
+BOOL g_scrollingUp = FALSE;
+BOOL g_scrollingDown = FALSE;
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -230,29 +230,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     {
         POINT pt = { LOWORD(lParam), HIWORD(lParam) };
         if (PtInRect(&g_upButtonRect, pt)) {
-            g_scrollingUp = true;
+            g_scrollingUp = TRUE;
             ScrollText(-SCROLL_STEP);
             g_timerId = SetTimer(hWnd, 1, 100, NULL);
         } else if (PtInRect(&g_downButtonRect, pt)) {
-            g_scrollingDown = true;
+            g_scrollingDown = TRUE;
             ScrollText(SCROLL_STEP);
             g_timerId = SetTimer(hWnd, 1, 100, NULL);
         } else if (PtInRect(&g_sliderRect, pt)) {
-            g_draggingSlider = true;
+            g_draggingSlider = TRUE;
             g_dragOffsetY = pt.y - g_sliderRect.top;
             SetCapture(hWnd);
         } else if (PtInRect(&g_textArea, pt)) {
-            g_draggingText = true;
+            g_draggingText = TRUE;
             g_dragStartY = pt.y;
             SetCapture(hWnd);
         }
     }
     break;
     case WM_LBUTTONUP:
-        g_draggingSlider = false;
-        g_draggingText = false;
-        g_scrollingUp = false;
-        g_scrollingDown = false;
+        g_draggingSlider = FALSE;
+        g_draggingText = FALSE;
+        g_scrollingUp = FALSE;
+        g_scrollingDown = FALSE;
         if (g_timerId) {
             KillTimer(hWnd, g_timerId);
             g_timerId = 0;
