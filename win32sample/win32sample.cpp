@@ -35,13 +35,17 @@ BOOL g_scrollingDown = FALSE;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 void InitLines() {
-    for (int i = 0; i < MAX_LINE_COUNT; ++i) {
+	int i = 0;
+
+    for (i = 0; i < MAX_LINE_COUNT; ++i) {
         wsprintf(g_lines[i], TEXT("\u30b5\u30f3\u30d7\u30eb\u6587\u7ae0 %d"), i + 1);
     }
 }
 
 void UpdateButtonState() {
-    int maxScroll = MAX_LINE_COUNT - VISIBLE_LINE_COUNT;
+	int maxScroll = 0;
+	
+	maxScroll = MAX_LINE_COUNT - VISIBLE_LINE_COUNT;
     if (g_scrollPos >= maxScroll) {
         EnableWindow(g_btnAgree, TRUE);
     } else {
@@ -52,14 +56,26 @@ void UpdateButtonState() {
 void UpdateLayout(HWND hWnd) {
     RECT client;
     GetClientRect(hWnd, &client);
+	int width = 0;
+	int height = 0;
 
-    int width = client.right - client.left;
-    int height = client.bottom - client.top;
+	int areaHeight = 0;
+	int areaWidth = 0;
+	int areaLeft = 0;
+	int areaTop = 0;
 
-    int areaHeight = VISIBLE_LINE_COUNT * g_lineHeight + 20;
-    int areaWidth = width / 2;
-    int areaLeft = (width - areaWidth) / 2;
-    int areaTop = (height - areaHeight) / 2;
+	int trackHeight = 0;
+	int sliderHeight = 0;
+	int maxScroll = 0;
+	int sliderTop = 0;
+
+    width = client.right - client.left;
+    height = client.bottom - client.top;
+
+    areaHeight = VISIBLE_LINE_COUNT * g_lineHeight + 20;
+    areaWidth = width / 2;
+    areaLeft = (width - areaWidth) / 2;
+    areaTop = (height - areaHeight) / 2;
 
     g_textArea.left = areaLeft;
     g_textArea.top = areaTop;
@@ -81,11 +97,11 @@ void UpdateLayout(HWND hWnd) {
     g_downButtonRect.right = g_scrollBarArea.right;
     g_downButtonRect.bottom = g_scrollBarArea.bottom;
 
-    int trackHeight = g_scrollBarArea.bottom - g_scrollBarArea.top - 60;
-    int sliderHeight = (trackHeight * VISIBLE_LINE_COUNT) / MAX_LINE_COUNT;
+    trackHeight = g_scrollBarArea.bottom - g_scrollBarArea.top - 60;
+    sliderHeight = (trackHeight * VISIBLE_LINE_COUNT) / MAX_LINE_COUNT;
     if (sliderHeight < 20) sliderHeight = 20;
-    int maxScroll = MAX_LINE_COUNT - VISIBLE_LINE_COUNT;
-    int sliderTop = g_upButtonRect.bottom + ((trackHeight - sliderHeight) * g_scrollPos / maxScroll);
+    maxScroll = MAX_LINE_COUNT - VISIBLE_LINE_COUNT;
+    sliderTop = g_upButtonRect.bottom + ((trackHeight - sliderHeight) * g_scrollPos / maxScroll);
 
     g_sliderRect.left = g_scrollBarArea.left;
     g_sliderRect.top = sliderTop;
@@ -100,9 +116,14 @@ void UpdateLayout(HWND hWnd) {
 
 void DrawContent(HDC hdc) {
     RECT client;
+	int width = 0;
+	int height = 0;
+	int startY = 0;
+	int i = 0;
+
     GetClientRect(g_hWnd, &client);
-    int width = client.right - client.left;
-    int height = client.bottom - client.top;
+    width = client.right - client.left;
+    height = client.bottom - client.top;
 
     HDC memDC = CreateCompatibleDC(hdc);
     HBITMAP memBM = CreateCompatibleBitmap(hdc, width, height);
@@ -120,10 +141,12 @@ void DrawContent(HDC hdc) {
 
     SetBkMode(memDC, TRANSPARENT);
     HFONT oldFont = (HFONT)SelectObject(memDC, g_hFont);
-    int startY = g_textArea.top + 10;
+    startY = g_textArea.top + 10;
 
-    for (int i = 0; i < VISIBLE_LINE_COUNT; ++i) {
-        int index = g_scrollPos + i;
+    for (i = 0; i < VISIBLE_LINE_COUNT; ++i) {
+		int index = 0;
+
+        index = g_scrollPos + i;
         if (index >= MAX_LINE_COUNT) break;
         TextOut(memDC, g_textArea.left + 10, startY + i * g_lineHeight, g_lines[index], lstrlen(g_lines[index]));
     }
@@ -152,7 +175,9 @@ void DrawContent(HDC hdc) {
 }
 
 void ScrollText(int delta) {
-    int newPos = g_scrollPos + delta;
+	int newPos = 0;
+
+    newPos = g_scrollPos + delta;
     newPos = max(0, min(newPos, MAX_LINE_COUNT - VISIBLE_LINE_COUNT));
     if (newPos != g_scrollPos) {
         g_scrollPos = newPos;
@@ -263,18 +288,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     {
         POINT pt = { LOWORD(lParam), HIWORD(lParam) };
         if (g_draggingSlider) {
-            int trackTop = g_upButtonRect.bottom;
-            int trackBottom = g_downButtonRect.top;
-            int trackHeight = trackBottom - trackTop;
-            int sliderHeight = g_sliderRect.bottom - g_sliderRect.top;
+			int trackTop = 0;
+			int trackBottom = 0;
+			int trackHeight = 0;
+			int sliderHeight = 0;
 
-            int newTop = pt.y - g_dragOffsetY;
+			int newTop = 0;
+			int sliderPos = 0;
+
+            trackTop = g_upButtonRect.bottom;
+            trackBottom = g_downButtonRect.top;
+            trackHeight = trackBottom - trackTop;
+            sliderHeight = g_sliderRect.bottom - g_sliderRect.top;
+
+            newTop = pt.y - g_dragOffsetY;
             newTop = max(trackTop, min(newTop, trackBottom - sliderHeight));
 
             g_sliderRect.top = newTop;
             g_sliderRect.bottom = newTop + sliderHeight;
 
-            int sliderPos = newTop - trackTop;
+            sliderPos = newTop - trackTop;
             g_scrollPos = sliderPos * (MAX_LINE_COUNT - VISIBLE_LINE_COUNT) / (trackHeight - sliderHeight);
 
             RECT redrawArea = {
