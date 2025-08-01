@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "win32sample.h"
+#include "win32wndProc.h"
 #include <windows.h>
 
 #define FONT_HEIGHT         20   // フォントの高さ（20ピクセル）
@@ -38,7 +39,6 @@ BOOL g_scrollingUp = FALSE;
 BOOL g_scrollingDown = FALSE;
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-void UpdateLayout(HWND hWnd);
 void UpdateButtonState();
 
 void InitLines() {
@@ -78,6 +78,16 @@ void InitLines() {
 	for (int i = 0; i < MAX_LINE_COUNT; ++i) {
 		lstrcpyn(g_lines[i], sampleText[i], MAX_LINE_LENGTH);
 	}
+}
+
+void CreateButtons(HWND hWnd) {
+	g_btnAgree = CreateWindow(L"BUTTON", L"同意する", WS_CHILD | WS_VISIBLE | WS_DISABLED,
+		160, 280, 100, 30, hWnd, (HMENU)1, g_hInst, NULL);
+	g_btnDisagree = CreateWindow(L"BUTTON", L"同意しない", WS_CHILD | WS_VISIBLE,
+		280, 280, 100, 30, hWnd, (HMENU)2, g_hInst, NULL);
+	g_btnToggle = CreateWindow(L"BUTTON", L"表示切替", WS_CHILD | WS_VISIBLE,
+		600, 400, 100, 30, hWnd, (HMENU)3, g_hInst, NULL);
+	UpdateLayout(hWnd);
 }
 
 
@@ -230,6 +240,16 @@ void DrawContent(HDC hdwnd) {
     DeleteDC(memDC);
 }
 
+
+void DrawContents(HWND hWnd) {
+	PAINTSTRUCT ps;
+	HDC hdwnd = BeginPaint(hWnd, &ps);
+	DrawContent(hdwnd);
+	EndPaint(hWnd, &ps);
+}
+
+
+
 void ScrollText(int delta) {
 	int newPos = 0;
 	if (!g_showContent) return;  // 表示されていないときは何もしない
@@ -250,6 +270,114 @@ void ScrollText(int delta) {
         UpdateButtonState();
     }
 }
+
+void ButtonDown(HWND hWnd,LPARAM lParam){
+	if (!g_showContent) return;
+
+    POINT pt = { LOWORD(lParam), HIWORD(lParam) };
+    if (PtInRect(&g_upButtonRect, pt)) {
+        g_scrollingUp = TRUE;
+        ScrollText(-SCROLL_STEP);
+        g_timerId = SetTimer(hWnd, 1, 100, NULL);
+    } else if (PtInRect(&g_downButtonRect, pt)) {
+        g_scrollingDown = TRUE;
+        ScrollText(SCROLL_STEP);
+        g_timerId = SetTimer(hWnd, 1, 100, NULL);
+    } else if (PtInRect(&g_sliderRect, pt)) {
+        g_draggingSlider = TRUE;
+        g_dragOffsetY = pt.y - g_sliderRect.top;
+        SetCapture(hWnd);
+    } else if (PtInRect(&g_textArea, pt)) {
+        g_draggingText = TRUE;
+        g_dragStartY = pt.y;
+        SetCapture(hWnd);
+    }
+}
+
+void ButtonUp(HWND hWnd)
+{
+    g_draggingSlider = FALSE;
+    g_draggingText = FALSE;
+    g_scrollingUp = FALSE;
+    g_scrollingDown = FALSE;
+    if (g_timerId) {
+        KillTimer(hWnd, g_timerId);
+        g_timerId = 0;
+    }
+    ReleaseCapture();
+}
+
+void MouseMove(HWND hWnd,LPARAM lParam)
+{
+    POINT pt = { LOWORD(lParam), HIWORD(lParam) };
+    if (g_draggingSlider) {
+		int trackTop = 0;
+		int trackBottom = 0;
+		int trackHeight = 0;
+		int sliderHeight = 0;
+
+		int newTop = 0;
+		int sliderPos = 0;
+
+        trackTop = g_upButtonRect.bottom;
+        trackBottom = g_downButtonRect.top;
+        trackHeight = trackBottom - trackTop;
+        sliderHeight = g_sliderRect.bottom - g_sliderRect.top;
+
+        newTop = pt.y - g_dragOffsetY;
+        newTop = max(trackTop, min(newTop, trackBottom - sliderHeight));
+
+        g_sliderRect.top = newTop;
+        g_sliderRect.bottom = newTop + sliderHeight;
+
+        sliderPos = newTop - trackTop;
+        g_scrollPos = sliderPos * (MAX_LINE_COUNT - VISIBLE_LINE_COUNT) / (trackHeight - sliderHeight);
+
+        RECT redrawArea = {
+            g_textArea.left,
+            g_textArea.top,
+            g_scrollBarArea.right,
+            g_textArea.bottom
+        };
+        InvalidateRect(hWnd, &redrawArea, FALSE);
+        UpdateButtonState();
+    } else if (g_draggingText) {
+        int dy = pt.y - g_dragStartY;
+        if (abs(dy) >= LINE_HEIGHT) {
+            ScrollText(-dy / LINE_HEIGHT);
+            g_dragStartY = pt.y;
+        }
+    }
+}
+
+void CommandExecute(HWND hWnd,WPARAM wParam)
+{
+	switch (LOWORD(wParam)) {
+	case 1:
+		MessageBox(hWnd, L"ありがとうございます。", L"同意", MB_OK);
+		break;
+	case 2:
+		MessageBox(hWnd, L"同意されませんでした。", L"非同意", MB_OK);
+		break;
+	case 3: // 表示切替ボタン
+		SetContentVisible(!g_showContent);
+		break;
+	}
+}
+
+void TimerAction()
+{
+  if (g_scrollingUp) ScrollText(-SCROLL_STEP);
+  else if (g_scrollingDown) ScrollText(SCROLL_STEP);
+}
+
+void DestroyAction(HWND hWnd)
+{
+	if (g_timerId) KillTimer(hWnd, g_timerId);
+	PostQuitMessage(0);
+}
+
+
 
 int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow) {
     WNDCLASS wc = {};
@@ -284,133 +412,4 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow) {
 
     DeleteObject(g_hFont);
     return (int)msg.wParam;
-}
-
-LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
-    case WM_CREATE:
-        InitLines();
-        g_btnAgree = CreateWindow(L"BUTTON", L"同意する", WS_CHILD | WS_VISIBLE | WS_DISABLED,
-            160, 280, 100, 30, hWnd, (HMENU)1, g_hInst, NULL);
-        g_btnDisagree = CreateWindow(L"BUTTON", L"同意しない", WS_CHILD | WS_VISIBLE,
-            280, 280, 100, 30, hWnd, (HMENU)2, g_hInst, NULL);
-		g_btnToggle = CreateWindow(L"BUTTON", L"表示切替", WS_CHILD | WS_VISIBLE,
-			600, 400, 100, 30, hWnd, (HMENU)3, g_hInst, NULL);
-        UpdateLayout(hWnd);
-        break;
-    case WM_SIZE:
-        UpdateLayout(hWnd);
-        InvalidateRect(hWnd, NULL, TRUE);
-        break;
-    case WM_PAINT:
-    {
-        PAINTSTRUCT ps;
-        HDC hdwnd = BeginPaint(hWnd, &ps);
-        DrawContent(hdwnd);
-        EndPaint(hWnd, &ps);
-    }
-    break;
-    case WM_LBUTTONDOWN:
-    {
-		if (!g_showContent) break;
-
-        POINT pt = { LOWORD(lParam), HIWORD(lParam) };
-        if (PtInRect(&g_upButtonRect, pt)) {
-            g_scrollingUp = TRUE;
-            ScrollText(-SCROLL_STEP);
-            g_timerId = SetTimer(hWnd, 1, 100, NULL);
-        } else if (PtInRect(&g_downButtonRect, pt)) {
-            g_scrollingDown = TRUE;
-            ScrollText(SCROLL_STEP);
-            g_timerId = SetTimer(hWnd, 1, 100, NULL);
-        } else if (PtInRect(&g_sliderRect, pt)) {
-            g_draggingSlider = TRUE;
-            g_dragOffsetY = pt.y - g_sliderRect.top;
-            SetCapture(hWnd);
-        } else if (PtInRect(&g_textArea, pt)) {
-            g_draggingText = TRUE;
-            g_dragStartY = pt.y;
-            SetCapture(hWnd);
-        }
-    }
-    break;
-    case WM_LBUTTONUP:
-        g_draggingSlider = FALSE;
-        g_draggingText = FALSE;
-        g_scrollingUp = FALSE;
-        g_scrollingDown = FALSE;
-        if (g_timerId) {
-            KillTimer(hWnd, g_timerId);
-            g_timerId = 0;
-        }
-        ReleaseCapture();
-        break;
-    case WM_MOUSEMOVE:
-    {
-        POINT pt = { LOWORD(lParam), HIWORD(lParam) };
-        if (g_draggingSlider) {
-			int trackTop = 0;
-			int trackBottom = 0;
-			int trackHeight = 0;
-			int sliderHeight = 0;
-
-			int newTop = 0;
-			int sliderPos = 0;
-
-            trackTop = g_upButtonRect.bottom;
-            trackBottom = g_downButtonRect.top;
-            trackHeight = trackBottom - trackTop;
-            sliderHeight = g_sliderRect.bottom - g_sliderRect.top;
-
-            newTop = pt.y - g_dragOffsetY;
-            newTop = max(trackTop, min(newTop, trackBottom - sliderHeight));
-
-            g_sliderRect.top = newTop;
-            g_sliderRect.bottom = newTop + sliderHeight;
-
-            sliderPos = newTop - trackTop;
-            g_scrollPos = sliderPos * (MAX_LINE_COUNT - VISIBLE_LINE_COUNT) / (trackHeight - sliderHeight);
-
-            RECT redrawArea = {
-                g_textArea.left,
-                g_textArea.top,
-                g_scrollBarArea.right,
-                g_textArea.bottom
-            };
-            InvalidateRect(hWnd, &redrawArea, FALSE);
-            UpdateButtonState();
-        } else if (g_draggingText) {
-            int dy = pt.y - g_dragStartY;
-            if (abs(dy) >= LINE_HEIGHT) {
-                ScrollText(-dy / LINE_HEIGHT);
-                g_dragStartY = pt.y;
-            }
-        }
-    }
-    break;
-    case WM_COMMAND:
-        switch (LOWORD(wParam)) {
-        case 1:
-            MessageBox(hWnd, L"ありがとうございます。", L"同意", MB_OK);
-            break;
-        case 2:
-            MessageBox(hWnd, L"同意されませんでした。", L"非同意", MB_OK);
-            break;
-		case 3: // 表示切替ボタン
-			SetContentVisible(!g_showContent);
-			break;
-        }
-        break;
-    case WM_TIMER:
-        if (g_scrollingUp) ScrollText(-SCROLL_STEP);
-        else if (g_scrollingDown) ScrollText(SCROLL_STEP);
-        break;
-    case WM_DESTROY:
-        if (g_timerId) KillTimer(hWnd, g_timerId);
-        PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hWnd, msg, wParam, lParam);
-    }
-    return 0;
 }
