@@ -38,6 +38,8 @@ BOOL g_scrollingUp = FALSE;
 BOOL g_scrollingDown = FALSE;
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+void UpdateLayout(HWND hWnd);
+void UpdateButtonState();
 
 void InitLines() {
 	const TCHAR* sampleText[MAX_LINE_COUNT] = {
@@ -84,9 +86,16 @@ void SetContentVisible(BOOL visible) {
 
 	ShowWindow(g_btnAgree, cmd);
 	ShowWindow(g_btnDisagree, cmd);
-	// g_btnToggle は常に表示（消すとトグル不能になる）
+	// g_btnToggle は常に表示（消すとトグル不能になる） 
 	g_showContent = visible;
-	InvalidateRect(g_hWnd, NULL, TRUE);
+
+	if (visible) {
+		g_scrollPos = 0;  // ← 追加：表示切り替え時にスクロール位置をリセット
+		UpdateLayout(g_hWnd);         // ← スクロール位置に応じた描画エリア再構築
+		UpdateButtonState();          // ← ボタンの有効/無効状態更新
+	}
+
+	InvalidateRect(g_hWnd, NULL, TRUE); // 画面再描画
 }
 
 void UpdateButtonState() {
