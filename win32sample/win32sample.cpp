@@ -2,6 +2,10 @@
 #include "win32sample.h"
 #include <windows.h>
 
+#define FONT_HEIGHT         20   // フォントの高さ（20ピクセル）
+#define LINE_SPACING        8    // 行間スペース（上下で余白）
+#define LINE_HEIGHT         (FONT_HEIGHT + LINE_SPACING)
+
 #define MAX_LINE_COUNT 30
 #define VISIBLE_LINE_COUNT 6
 #define SCROLL_STEP 1
@@ -27,7 +31,6 @@ BOOL g_draggingText = FALSE;
 int g_dragStartY = 0;
 
 HFONT g_hFont = NULL;
-const int g_lineHeight = 24;
 UINT_PTR g_timerId = 0;
 BOOL g_scrollingUp = FALSE;
 BOOL g_scrollingDown = FALSE;
@@ -72,7 +75,7 @@ void UpdateLayout(HWND hWnd) {
     width = client.right - client.left;
     height = client.bottom - client.top;
 
-    areaHeight = VISIBLE_LINE_COUNT * g_lineHeight + 20;
+    areaHeight = VISIBLE_LINE_COUNT * LINE_HEIGHT + 20;
     areaWidth = width / 2;
     areaLeft = (width - areaWidth) / 2;
     areaTop = (height - areaHeight) / 2;
@@ -148,7 +151,7 @@ void DrawContent(HDC hdwnd) {
 
         index = g_scrollPos + i;
         if (index >= MAX_LINE_COUNT) break;
-        TextOut(memDC, g_textArea.left + 10, startY + i * g_lineHeight, g_lines[index], lstrlen(g_lines[index]));
+        TextOut(memDC, g_textArea.left + 10, startY + i * LINE_HEIGHT, g_lines[index], lstrlen(g_lines[index]));
     }
 
     FillRect(memDC, &g_upButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
@@ -211,10 +214,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow) {
         CW_USEDEFAULT, CW_USEDEFAULT, 600, 400,
         NULL, NULL, hInstance, NULL);
 
-    LOGFONT lf = {};
-    lf.lfHeight = -g_lineHeight;
-    wcscpy_s(lf.lfFaceName, L"BIZ UDGothic");
-    g_hFont = CreateFontIndirect(&lf);
+	LOGFONT lf = {};
+	lf.lfHeight = -FONT_HEIGHT;  // フォントサイズを固定（行間とは別）
+	wcscpy_s(lf.lfFaceName, L"BIZ UDGothic");
+	g_hFont = CreateFontIndirect(&lf);
 
     ShowWindow(g_hWnd, nCmdShow);
     UpdateWindow(g_hWnd);
@@ -320,8 +323,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             UpdateButtonState();
         } else if (g_draggingText) {
             int dy = pt.y - g_dragStartY;
-            if (abs(dy) >= g_lineHeight) {
-                ScrollText(-dy / g_lineHeight);
+            if (abs(dy) >= LINE_HEIGHT) {
+                ScrollText(-dy / LINE_HEIGHT);
                 g_dragStartY = pt.y;
             }
         }
