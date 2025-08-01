@@ -223,6 +223,7 @@ void DrawContent(HDC hdwnd) {
 
 void ScrollText(int delta) {
 	int newPos = 0;
+	if (!g_showContent) return;  // •\Ž¦‚³‚ê‚Ä‚¢‚È‚¢‚Æ‚«‚Í‰½‚à‚µ‚È‚¢
 
     newPos = g_scrollPos + delta;
     newPos = max(0, min(newPos, MAX_LINE_COUNT - VISIBLE_LINE_COUNT));
@@ -302,6 +303,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     break;
     case WM_LBUTTONDOWN:
     {
+		if (!g_showContent) break;
+
         POINT pt = { LOWORD(lParam), HIWORD(lParam) };
         if (PtInRect(&g_upButtonRect, pt)) {
             g_scrollingUp = TRUE;
