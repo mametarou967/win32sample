@@ -38,12 +38,44 @@ BOOL g_scrollingDown = FALSE;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 void InitLines() {
-	int i = 0;
+	const TCHAR* sampleText[MAX_LINE_COUNT] = {
+		TEXT("第1条　本規約はサービス利用条件を定めます。"),
+		TEXT("第2条　ユーザーは本規約に同意の上、利用します。"),
+		TEXT("第3条　サービス内容は予告なく変更されます。"),
+		TEXT("第4条　当社は通知なくサービスを終了できます。"),
+		TEXT("第5条　ユーザーは不正利用をしてはなりません。"),
+		TEXT("第6条　本サービスの利用は自己責任とします。"),
+		TEXT("第7条　当社は誠実に運営を行います。"),
+		TEXT("第8条　当社は障害による損害を負いません。"),
+		TEXT("第9条　他人の権利を侵害してはなりません。"),
+		TEXT("第10条　他の利用者に迷惑をかけないこと。"),
+		TEXT("第11条　得た情報の転載は禁止します。"),
+		TEXT("第12条　アカウントは自己管理を行います。"),
+		TEXT("第13条　パスワード管理は利用者の責任です。"),
+		TEXT("第14条　必要に応じて連絡を行う場合があります。"),
+		TEXT("第15条　個人情報は適切に管理されます。"),
+		TEXT("第16条　全コンテンツは当社に帰属します。"),
+		TEXT("第17条　複製・改変は禁止されています。"),
+		TEXT("第18条　違反時は利用停止などの措置をとります。"),
+		TEXT("第19条　権利の譲渡は禁止されています。"),
+		TEXT("第20条　業務を外部に委託することがあります。"),
+		TEXT("第21条　取引は利用者の責任で行ってください。"),
+		TEXT("第22条　法令を遵守してサービスを利用します。"),
+		TEXT("第23条　規約は改定されることがあります。"),
+		TEXT("第24条　準拠法は日本法とします。"),
+		TEXT("第25条　訴訟は東京地方裁判所を管轄とします。"),
+		TEXT("第26条　未成年者は保護者の同意が必要です。"),
+		TEXT("第27条　不適切な行為には措置を取ります。"),
+		TEXT("第28条　安定運用に努めますが保証しません。"),
+		TEXT("第29条　日本語規約が優先されます。"),
+		TEXT("第30条　本規約は2025年8月1日より施行します。")
+	};
 
-    for (i = 0; i < MAX_LINE_COUNT; ++i) {
-        wsprintf(g_lines[i], TEXT("\u30b5\u30f3\u30d7\u30eb\u6587\u7ae0 %d"), i + 1);
-    }
+	for (int i = 0; i < MAX_LINE_COUNT; ++i) {
+		lstrcpyn(g_lines[i], sampleText[i], MAX_LINE_LENGTH);
+	}
 }
+
 
 void UpdateButtonState() {
 	int maxScroll = 0;
@@ -55,67 +87,65 @@ void UpdateButtonState() {
         EnableWindow(g_btnAgree, FALSE);
     }
 }
-
 void UpdateLayout(HWND hWnd) {
-    RECT client;
-    GetClientRect(hWnd, &client);
-	int width = 0;
-	int height = 0;
+	RECT client;
+	GetClientRect(hWnd, &client);
+	int width = client.right - client.left;
+	int height = client.bottom - client.top;
 
-	int areaHeight = 0;
-	int areaWidth = 0;
-	int areaLeft = 0;
-	int areaTop = 0;
+	int areaHeight = VISIBLE_LINE_COUNT * LINE_HEIGHT + 20;
+	int areaTop = (height - areaHeight) / 2;
 
-	int trackHeight = 0;
-	int sliderHeight = 0;
-	int maxScroll = 0;
-	int sliderTop = 0;
+	int areaBaseWidth = width / 2;              // ★ 元の基準幅（初期値300）
+	int textLeft = 200;                          // ★ 左端固定
+	int textWidth = (int)(areaBaseWidth * 1.5); // ★ 1.8倍に拡大（たとえば540px）
+	int spacing = 10;
+	int scrollBarWidth = 30;
 
-    width = client.right - client.left;
-    height = client.bottom - client.top;
+	// テキストエリア
+	g_textArea.left = textLeft;
+	g_textArea.top = areaTop;
+	g_textArea.right = g_textArea.left + textWidth;
+	g_textArea.bottom = g_textArea.top + areaHeight;
 
-    areaHeight = VISIBLE_LINE_COUNT * LINE_HEIGHT + 20;
-    areaWidth = width / 2;
-    areaLeft = (width - areaWidth) / 2;
-    areaTop = (height - areaHeight) / 2;
+	// スクロールバーエリア
+	g_scrollBarArea.left = g_textArea.right + spacing;
+	g_scrollBarArea.top = g_textArea.top;
+	g_scrollBarArea.right = g_scrollBarArea.left + scrollBarWidth;
+	g_scrollBarArea.bottom = g_textArea.bottom;
 
-    g_textArea.left = areaLeft;
-    g_textArea.top = areaTop;
-    g_textArea.right = areaLeft + areaWidth - 60;
-    g_textArea.bottom = areaTop + areaHeight;
+	// 上ボタン
+	g_upButtonRect.left = g_scrollBarArea.left;
+	g_upButtonRect.top = g_scrollBarArea.top;
+	g_upButtonRect.right = g_scrollBarArea.right;
+	g_upButtonRect.bottom = g_scrollBarArea.top + 30;
 
-    g_scrollBarArea.left = g_textArea.right + 10;
-    g_scrollBarArea.top = g_textArea.top;
-    g_scrollBarArea.right = g_textArea.right + 40;
-    g_scrollBarArea.bottom = g_textArea.bottom;
+	// 下ボタン
+	g_downButtonRect.left = g_scrollBarArea.left;
+	g_downButtonRect.top = g_scrollBarArea.bottom - 30;
+	g_downButtonRect.right = g_scrollBarArea.right;
+	g_downButtonRect.bottom = g_scrollBarArea.bottom;
 
-    g_upButtonRect.left = g_scrollBarArea.left;
-    g_upButtonRect.top = g_scrollBarArea.top;
-    g_upButtonRect.right = g_scrollBarArea.right;
-    g_upButtonRect.bottom = g_scrollBarArea.top + 30;
+	// スライダー
+	int trackHeight = g_scrollBarArea.bottom - g_scrollBarArea.top - 60;
+	int sliderHeight = (trackHeight * VISIBLE_LINE_COUNT) / MAX_LINE_COUNT;
+	if (sliderHeight < 20) sliderHeight = 20;
+	int maxScroll = MAX_LINE_COUNT - VISIBLE_LINE_COUNT;
+	int sliderTop = g_upButtonRect.bottom + ((trackHeight - sliderHeight) * g_scrollPos / maxScroll);
 
-    g_downButtonRect.left = g_scrollBarArea.left;
-    g_downButtonRect.top = g_scrollBarArea.bottom - 30;
-    g_downButtonRect.right = g_scrollBarArea.right;
-    g_downButtonRect.bottom = g_scrollBarArea.bottom;
+	g_sliderRect.left = g_scrollBarArea.left;
+	g_sliderRect.top = sliderTop;
+	g_sliderRect.right = g_scrollBarArea.right;
+	g_sliderRect.bottom = sliderTop + sliderHeight;
 
-    trackHeight = g_scrollBarArea.bottom - g_scrollBarArea.top - 60;
-    sliderHeight = (trackHeight * VISIBLE_LINE_COUNT) / MAX_LINE_COUNT;
-    if (sliderHeight < 20) sliderHeight = 20;
-    maxScroll = MAX_LINE_COUNT - VISIBLE_LINE_COUNT;
-    sliderTop = g_upButtonRect.bottom + ((trackHeight - sliderHeight) * g_scrollPos / maxScroll);
-
-    g_sliderRect.left = g_scrollBarArea.left;
-    g_sliderRect.top = sliderTop;
-    g_sliderRect.right = g_scrollBarArea.right;
-    g_sliderRect.bottom = sliderTop + sliderHeight;
-
-    if (g_btnAgree && g_btnDisagree) {
-        MoveWindow(g_btnAgree, areaLeft, g_textArea.bottom + 20, 100, 30, TRUE);
-        MoveWindow(g_btnDisagree, areaLeft + 120, g_textArea.bottom + 20, 100, 30, TRUE);
-    }
+	// ボタン配置
+	if (g_btnAgree && g_btnDisagree) {
+		MoveWindow(g_btnAgree, textLeft, g_textArea.bottom + 20, 100, 30, TRUE);
+		MoveWindow(g_btnDisagree, textLeft + 120, g_textArea.bottom + 20, 100, 30, TRUE);
+	}
 }
+
+
 
 void DrawContent(HDC hdwnd) {
     RECT client;
@@ -209,10 +239,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow) {
 
     g_hInst = hInstance;
 
-    g_hWnd = CreateWindow(L"MyWindowClass", L"Win32 Scroll Demo",
-        WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, 600, 400,
-        NULL, NULL, hInstance, NULL);
+	g_hWnd = CreateWindow(L"MyWindowClass", L"Win32 Scroll Demo",
+		WS_OVERLAPPEDWINDOW,
+		CW_USEDEFAULT, CW_USEDEFAULT, 1100, 500, // ★ 十分な幅に拡大
+		NULL, NULL, hInstance, NULL);
 
 	LOGFONT lf = {};
 	lf.lfHeight = -FONT_HEIGHT;  // フォントサイズを固定（行間とは別）
