@@ -114,7 +114,7 @@ void UpdateLayout(HWND hWnd) {
     }
 }
 
-void DrawContent(HDC hdc) {
+void DrawContent(HDC hdwnd) {
     RECT client;
 	int width = 0;
 	int height = 0;
@@ -125,8 +125,8 @@ void DrawContent(HDC hdc) {
     width = client.right - client.left;
     height = client.bottom - client.top;
 
-    HDC memDC = CreateCompatibleDC(hdc);
-    HBITMAP memBM = CreateCompatibleBitmap(hdc, width, height);
+    HDC memDC = CreateCompatibleDC(hdwnd);
+    HBITMAP memBM = CreateCompatibleBitmap(hdwnd, width, height);
     HBITMAP oldBM = (HBITMAP)SelectObject(memDC, memBM);
 
     FillRect(memDC, &client, (HBRUSH)(COLOR_WINDOW + 1));
@@ -167,7 +167,7 @@ void DrawContent(HDC hdc) {
     FillRect(memDC, &g_sliderRect, (HBRUSH)GetStockObject(GRAY_BRUSH));
 
     SelectObject(memDC, oldFont);
-    BitBlt(hdc, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
+    BitBlt(hdwnd, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
 
     SelectObject(memDC, oldBM);
     DeleteObject(memBM);
@@ -213,7 +213,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow) {
 
     LOGFONT lf = {};
     lf.lfHeight = -g_lineHeight;
-    wcscpy_s(lf.lfFaceName, L"BIZ UDÉSÉVÉbÉN");
+    wcscpy_s(lf.lfFaceName, L"BIZ UDGothic");
     g_hFont = CreateFontIndirect(&lf);
 
     ShowWindow(g_hWnd, nCmdShow);
@@ -246,8 +246,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_PAINT:
     {
         PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hWnd, &ps);
-        DrawContent(hdc);
+        HDC hdwnd = BeginPaint(hWnd, &ps);
+        DrawContent(hdwnd);
         EndPaint(hWnd, &ps);
     }
     break;
