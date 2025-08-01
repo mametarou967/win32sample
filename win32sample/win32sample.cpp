@@ -25,6 +25,8 @@ RECT g_upButtonRect;
 RECT g_downButtonRect;
 RECT g_sliderRect;
 
+BOOL g_showContent = TRUE;       // 表示状態を保持
+HWND g_btnToggle = NULL;         // 表示切替ボタン
 BOOL g_draggingSlider = FALSE;
 int g_dragOffsetY = 0;
 BOOL g_draggingText = FALSE;
@@ -76,6 +78,16 @@ void InitLines() {
 	}
 }
 
+
+void SetContentVisible(BOOL visible) {
+	int cmd = visible ? SW_SHOW : SW_HIDE;
+
+	ShowWindow(g_btnAgree, cmd);
+	ShowWindow(g_btnDisagree, cmd);
+	// g_btnToggle は常に表示（消すとトグル不能になる）
+	g_showContent = visible;
+	InvalidateRect(g_hWnd, NULL, TRUE);
+}
 
 void UpdateButtonState() {
 	int maxScroll = 0;
@@ -153,6 +165,8 @@ void DrawContent(HDC hdwnd) {
 	int height = 0;
 	int startY = 0;
 	int i = 0;
+
+	if (!g_showContent) return; // 非表示時は描画しない
 
     GetClientRect(g_hWnd, &client);
     width = client.right - client.left;
@@ -270,6 +284,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             160, 280, 100, 30, hWnd, (HMENU)1, g_hInst, NULL);
         g_btnDisagree = CreateWindow(L"BUTTON", L"同意しない", WS_CHILD | WS_VISIBLE,
             280, 280, 100, 30, hWnd, (HMENU)2, g_hInst, NULL);
+		g_btnToggle = CreateWindow(L"BUTTON", L"表示切替", WS_CHILD | WS_VISIBLE,
+			600, 400, 100, 30, hWnd, (HMENU)3, g_hInst, NULL);
         UpdateLayout(hWnd);
         break;
     case WM_SIZE:
@@ -368,6 +384,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         case 2:
             MessageBox(hWnd, L"同意されませんでした。", L"非同意", MB_OK);
             break;
+		case 3: // 表示切替ボタン
+			SetContentVisible(!g_showContent);
+			break;
         }
         break;
     case WM_TIMER:
