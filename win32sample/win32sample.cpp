@@ -176,78 +176,102 @@ void UpdateLayout(HWND hWnd) {
 	}
 }
 
-
-
-void DrawContent(HDC hdwnd) {
+// --- ダブルバッファの初期化（先頭処理で呼び出す） ---
+bool U01_InitScrollTextBuffer(HWND hWnd, HDC targetDC, HDC* pMemDC, HBITMAP* pMemBM, HBITMAP* pOldBM) {
     RECT client;
-	int width = 0;
-	int height = 0;
-	int startY = 0;
-	int i = 0;
+    GetClientRect(hWnd, &client);
+    int width = client.right - client.left;
+    int height = client.bottom - client.top;
 
-	if (!g_showContent) return; // 非表示時は描画しない
+    HDC memDC = CreateCompatibleDC(targetDC);
+    if (!memDC) return false;
 
-    GetClientRect(g_hWnd, &client);
-    width = client.right - client.left;
-    height = client.bottom - client.top;
-
-    HDC memDC = CreateCompatibleDC(hdwnd);
-    HBITMAP memBM = CreateCompatibleBitmap(hdwnd, width, height);
-    HBITMAP oldBM = (HBITMAP)SelectObject(memDC, memBM);
-
-    FillRect(memDC, &client, (HBRUSH)(COLOR_WINDOW + 1));
-
-    HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
-    HGDIOBJ oldPen = SelectObject(memDC, hPen);
-    HGDIOBJ oldBrush = SelectObject(memDC, GetStockObject(NULL_BRUSH));
-    Rectangle(memDC, g_textArea.left, g_textArea.top, g_scrollBarArea.left, g_textArea.bottom);
-    SelectObject(memDC, oldBrush);
-    SelectObject(memDC, oldPen);
-    DeleteObject(hPen);
-
-    SetBkMode(memDC, TRANSPARENT);
-    HFONT oldFont = (HFONT)SelectObject(memDC, g_hFont);
-    startY = g_textArea.top + 10;
-
-    for (i = 0; i < VISIBLE_LINE_COUNT; ++i) {
-		int index = 0;
-
-        index = g_scrollPos + i;
-        if (index >= MAX_LINE_COUNT) break;
-        TextOut(memDC, g_textArea.left + 10, startY + i * LINE_HEIGHT, g_lines[index], lstrlen(g_lines[index]));
+    HBITMAP memBM = CreateCompatibleBitmap(targetDC, width, height);
+    if (!memBM) {
+        DeleteDC(memDC);
+        return false;
     }
 
-    FillRect(memDC, &g_upButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
-    DrawText(memDC, TEXT("\u25b2"), -1, &g_upButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    HBITMAP oldBM = (HBITMAP)SelectObject(memDC, memBM);
 
-    FillRect(memDC, &g_downButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
-    DrawText(memDC, TEXT("\u25bc"), -1, &g_downButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    *pMemDC = memDC;
+    *pMemBM = memBM;
+    *pOldBM = oldBM;
 
-    RECT trackRect;
-    trackRect.left = g_scrollBarArea.left;
-    trackRect.top = g_upButtonRect.bottom;
-    trackRect.right = g_scrollBarArea.right;
-    trackRect.bottom = g_downButtonRect.top;
-    FillRect(memDC, &trackRect, (HBRUSH)(COLOR_SCROLLBAR + 1));
-
-    FillRect(memDC, &g_sliderRect, (HBRUSH)GetStockObject(GRAY_BRUSH));
-
-    SelectObject(memDC, oldFont);
-    BitBlt(hdwnd, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
-
-    SelectObject(memDC, oldBM);
-    DeleteObject(memBM);
-    DeleteDC(memDC);
+    return true;
 }
 
+// --- ダブルバッファの解放（最後処理で呼び出す） ---
+void U01_CleanupScrollTextBuffer(HDC memDC, HBITMAP memBM, HBITMAP oldBM) {
+    if (memDC) {
+        SelectObject(memDC, oldBM);
+        DeleteObject(memBM);
+        DeleteDC(memDC);
+    }
+}
+
+// --- 描画本体（任意の HDC に描画可能に） ---
+void U01_DrawScrollTextDC(HDC hTargetDC) {
+    RECT client;
+    GetClientRect(g_hWnd, &client);
+
+    FillRect(hTargetDC, &client, (HBRUSH)(COLOR_WINDOW + 1));
+
+    HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+    HGDIOBJ oldPen = SelectObject(hTargetDC, hPen);
+    HGDIOBJ oldBrush = SelectObject(hTargetDC, GetStockObject(NULL_BRUSH));
+    Rectangle(hTargetDC, g_textArea.left, g_textArea.top, g_scrollBarArea.left, g_textArea.bottom);
+    SelectObject(hTargetDC, oldBrush);
+    SelectObject(hTargetDC, oldPen);
+    DeleteObject(hPen);
+
+    SetBkMode(hTargetDC, TRANSPARENT);
+    HFONT oldFont = (HFONT)SelectObject(hTargetDC, g_hFont);
+    int startY = g_textArea.top + 10;
+    for (int i = 0; i < VISIBLE_LINE_COUNT; ++i) {
+        int index = g_scrollPos + i;
+        if (index >= MAX_LINE_COUNT) break;
+        TextOut(hTargetDC, g_textArea.left + 10, startY + i * LINE_HEIGHT, g_lines[index], lstrlen(g_lines[index]));
+    }
+    SelectObject(hTargetDC, oldFont);
+
+    FillRect(hTargetDC, &g_upButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
+    DrawText(hTargetDC, TEXT("\u25b2"), -1, &g_upButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    FillRect(hTargetDC, &g_downButtonRect, (HBRUSH)(COLOR_BTNFACE + 1));
+    DrawText(hTargetDC, TEXT("\u25bc"), -1, &g_downButtonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+    RECT trackRect = { g_scrollBarArea.left, g_upButtonRect.bottom, g_scrollBarArea.right, g_downButtonRect.top };
+    FillRect(hTargetDC, &trackRect, (HBRUSH)(COLOR_SCROLLBAR + 1));
+    FillRect(hTargetDC, &g_sliderRect, (HBRUSH)GetStockObject(GRAY_BRUSH));
+}
+
+// --- 表示用の転送関数（memDC -> 表示DC） ---
+void U01_PresentScrollText(HDC targetDC, HDC memDC) {
+    RECT client;
+    GetClientRect(g_hWnd, &client);
+    int width = client.right - client.left;
+    int height = client.bottom - client.top;
+    BitBlt(targetDC, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
+}
 
 void DrawContents(HWND hWnd) {
-	PAINTSTRUCT ps;
-	HDC hdwnd = BeginPaint(hWnd, &ps);
-	DrawContent(hdwnd);
-	EndPaint(hWnd, &ps);
-}
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hWnd, &ps);
 
+    if (g_showContent) {
+        HDC memDC = NULL;
+        HBITMAP memBM = NULL;
+        HBITMAP oldBM = NULL;
+
+        if (U01_InitScrollTextBuffer(hWnd, hdc, &memDC, &memBM, &oldBM)) {
+            U01_DrawScrollTextDC(memDC);
+            U01_PresentScrollText(hdc, memDC);
+            U01_CleanupScrollTextBuffer(memDC, memBM, oldBM);
+        }
+    }
+
+    EndPaint(hWnd, &ps);
+}
 
 
 void ScrollText(int delta) {
