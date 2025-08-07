@@ -43,7 +43,7 @@ void UpdateButtonState();
 
 void InitLines() {
 	const TCHAR* sampleText[MAX_LINE_COUNT] = {
-		TEXT("第1条　本規約はサービス利用条件を定めます。"),
+		TEXT("第1条　本規約は2025年8月1日より施行します。"),
 		TEXT("第2条　ユーザーは本規約に同意の上、利用します。"),
 		TEXT("第3条　サービス内容は予告なく変更されます。"),
 		TEXT("第4条　当社は通知なくサービスを終了できます。"),
@@ -52,7 +52,7 @@ void InitLines() {
 		TEXT("第7条　当社は誠実に運営を行います。"),
 		TEXT("第8条　当社は障害による損害を負いません。"),
 		TEXT("第9条　他人の権利を侵害してはなりません。"),
-		TEXT("第10条　他の利用者に迷惑をかけないこと。"),
+		TEXT("第10条　他の利用者に迷惑をかけないことﾄ。"),
 		TEXT("第11条　得た情報の転載は禁止します。"),
 		TEXT("第12条　アカウントは自己管理を行います。"),
 		TEXT("第13条　パスワード管理は利用者の責任です。"),
@@ -86,7 +86,7 @@ void CreateButtons(HWND hWnd) {
 	g_btnDisagree = CreateWindow(L"BUTTON", L"同意しない", WS_CHILD | WS_VISIBLE,
 		280, 280, 100, 30, hWnd, (HMENU)2, g_hInst, NULL);
 	g_btnToggle = CreateWindow(L"BUTTON", L"表示切替", WS_CHILD | WS_VISIBLE,
-		600, 400, 100, 30, hWnd, (HMENU)3, g_hInst, NULL);
+		600, 600, 100, 30, hWnd, (HMENU)3, g_hInst, NULL);
 	UpdateLayout(hWnd);
 }
 
@@ -127,11 +127,13 @@ void UpdateLayout(HWND hWnd) {
 	int areaHeight = VISIBLE_LINE_COUNT * LINE_HEIGHT + 20;
 	int areaTop = (height - areaHeight) / 2;
 
-	int areaBaseWidth = width / 2;              // ★ 元の基準幅（初期値300）
-	int textLeft = 200;                          // ★ 左端固定
-	int textWidth = (int)(areaBaseWidth * 1.5); // ★ 1.8倍に拡大（たとえば540px）
+	int areaBaseWidth = width / 2;
+	int textLeft = 200;
+	int textWidth = (int)(areaBaseWidth * 1.5);
 	int spacing = 10;
-	int scrollBarWidth = 30;
+
+	int scrollButtonSize = LINE_HEIGHT * 2; // ★ 2行分（36*2=72）
+	int scrollBarWidth = scrollButtonSize;  // ★ ボタンと同じ幅に
 
 	// テキストエリア
 	g_textArea.left = textLeft;
@@ -149,16 +151,16 @@ void UpdateLayout(HWND hWnd) {
 	g_upButtonRect.left = g_scrollBarArea.left;
 	g_upButtonRect.top = g_scrollBarArea.top;
 	g_upButtonRect.right = g_scrollBarArea.right;
-	g_upButtonRect.bottom = g_scrollBarArea.top + 30;
+	g_upButtonRect.bottom = g_upButtonRect.top + scrollButtonSize;
 
 	// 下ボタン
 	g_downButtonRect.left = g_scrollBarArea.left;
-	g_downButtonRect.top = g_scrollBarArea.bottom - 30;
+	g_downButtonRect.top = g_scrollBarArea.bottom - scrollButtonSize;
 	g_downButtonRect.right = g_scrollBarArea.right;
 	g_downButtonRect.bottom = g_scrollBarArea.bottom;
 
 	// スライダー
-	int trackHeight = g_scrollBarArea.bottom - g_scrollBarArea.top - 60;
+	int trackHeight = g_scrollBarArea.bottom - g_scrollBarArea.top - scrollButtonSize * 2;
 	int sliderHeight = (trackHeight * VISIBLE_LINE_COUNT) / MAX_LINE_COUNT;
 	if (sliderHeight < 20) sliderHeight = 20;
 	int maxScroll = MAX_LINE_COUNT - VISIBLE_LINE_COUNT;
@@ -417,7 +419,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow) {
 
 	g_hWnd = CreateWindow(L"MyWindowClass", L"Win32 Scroll Demo",
 		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, 1100, 500, // ★ 十分な幅に拡大
+		CW_USEDEFAULT, CW_USEDEFAULT, 1300, 700, // ★ 十分な幅に拡大
 		NULL, NULL, hInstance, NULL);
 
 	LOGFONT lf = {};
