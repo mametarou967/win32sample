@@ -3,12 +3,12 @@
 #include "win32wndProc.h"
 #include <windows.h>
 
-#define FONT_HEIGHT         20   // フォントの高さ（20ピクセル）
+#define FONT_HEIGHT         32   // ← 20 → 28 に変更
 #define LINE_SPACING        8    // 行間スペース（上下で余白）
 #define LINE_HEIGHT         (FONT_HEIGHT + LINE_SPACING)
 
 #define MAX_LINE_COUNT 30
-#define VISIBLE_LINE_COUNT 6
+#define VISIBLE_LINE_COUNT 10
 #define SCROLL_STEP 1
 #define MAX_LINE_LENGTH 128
 
