@@ -38,6 +38,10 @@ UINT_PTR g_timerId = 0;
 BOOL g_scrollingUp = FALSE;
 BOOL g_scrollingDown = FALSE;
 
+BOOL g_pageScrollUp = FALSE;
+BOOL g_pageScrollDown = FALSE;
+int g_targetScrollPos = -1;  // スクロール目標位置（1回のみ移動で使う）
+
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void UpdateButtonState();
 
@@ -297,42 +301,60 @@ void ScrollText(int delta) {
     }
 }
 
-void ButtonDown(HWND hWnd,LPARAM lParam){
+void ButtonDown(HWND hWnd, LPARAM lParam) {
 	if (!g_showContent) return;
 
-    POINT pt = { LOWORD(lParam), HIWORD(lParam) };
-    if (PtInRect(&g_upButtonRect, pt)) {
-        g_scrollingUp = TRUE;
-        ScrollText(-SCROLL_STEP);
-        g_timerId = SetTimer(hWnd, 1, 100, NULL);
-    } else if (PtInRect(&g_downButtonRect, pt)) {
-        g_scrollingDown = TRUE;
-        ScrollText(SCROLL_STEP);
-        g_timerId = SetTimer(hWnd, 1, 100, NULL);
-    } else if (PtInRect(&g_sliderRect, pt)) {
-        g_draggingSlider = TRUE;
-        g_dragOffsetY = pt.y - g_sliderRect.top;
-        SetCapture(hWnd);
-    } else if (PtInRect(&g_textArea, pt)) {
-        g_draggingText = TRUE;
-        g_dragStartY = pt.y;
-        SetCapture(hWnd);
-    }
+	POINT pt = { LOWORD(lParam), HIWORD(lParam) };
+
+	if (PtInRect(&g_upButtonRect, pt)) {
+		g_scrollingUp = TRUE;
+		ScrollText(-SCROLL_STEP);
+		g_timerId = SetTimer(hWnd, 1, 100, NULL);
+	}
+	else if (PtInRect(&g_downButtonRect, pt)) {
+		g_scrollingDown = TRUE;
+		ScrollText(SCROLL_STEP);
+		g_timerId = SetTimer(hWnd, 1, 100, NULL);
+	}
+	else if (PtInRect(&g_sliderRect, pt)) {
+		g_draggingSlider = TRUE;
+		g_dragOffsetY = pt.y - g_sliderRect.top;
+		SetCapture(hWnd);
+	}
+	else if (PtInRect(&g_textArea, pt)) {
+		g_draggingText = TRUE;
+		g_dragStartY = pt.y;
+		SetCapture(hWnd);
+	}
+	else if (PtInRect(&g_scrollBarArea, pt)) {
+		if (pt.y < g_sliderRect.top) {
+			g_pageScrollUp = TRUE;
+			ScrollText(-VISIBLE_LINE_COUNT);  // ← ここ追加！
+			g_timerId = SetTimer(hWnd, 1, 100, NULL);
+		}
+		else if (pt.y > g_sliderRect.bottom) {
+			g_pageScrollDown = TRUE;
+			ScrollText(+VISIBLE_LINE_COUNT);  // ← ここ追加！
+			g_timerId = SetTimer(hWnd, 1, 100, NULL);
+		}
+	}
 }
 
-void ButtonUp(HWND hWnd)
-{
-    g_draggingSlider = FALSE;
-    g_draggingText = FALSE;
-    g_scrollingUp = FALSE;
-    g_scrollingDown = FALSE;
-    if (g_timerId) {
-        KillTimer(hWnd, g_timerId);
-        g_timerId = 0;
-    }
-    ReleaseCapture();
-}
+void ButtonUp(HWND hWnd) {
+	g_draggingSlider = FALSE;
+	g_draggingText = FALSE;
+	g_scrollingUp = FALSE;
+	g_scrollingDown = FALSE;
+	g_pageScrollUp = FALSE;
+	g_pageScrollDown = FALSE;
+	g_targetScrollPos = -1;
 
+	if (g_timerId) {
+		KillTimer(hWnd, g_timerId);
+		g_timerId = 0;
+	}
+	ReleaseCapture();
+}
 void MouseMove(HWND hWnd,LPARAM lParam)
 {
     POINT pt = { LOWORD(lParam), HIWORD(lParam) };
@@ -391,10 +413,21 @@ void CommandExecute(HWND hWnd,WPARAM wParam)
 	}
 }
 
-void TimerAction()
-{
-  if (g_scrollingUp) ScrollText(-SCROLL_STEP);
-  else if (g_scrollingDown) ScrollText(SCROLL_STEP);
+void TimerAction() {
+	if (g_scrollingUp) {
+		ScrollText(-SCROLL_STEP);
+	}
+	else if (g_scrollingDown) {
+		ScrollText(SCROLL_STEP);
+	}
+	else if (g_pageScrollUp) {
+		int pageDelta = -VISIBLE_LINE_COUNT;
+		ScrollText(pageDelta);
+	}
+	else if (g_pageScrollDown) {
+		int pageDelta = VISIBLE_LINE_COUNT;
+		ScrollText(pageDelta);
+	}
 }
 
 void DestroyAction(HWND hWnd)
